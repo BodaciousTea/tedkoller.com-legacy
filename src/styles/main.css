@@ -28,6 +28,22 @@ html {
   scroll-behavior: smooth;
 }
 
+.legacy-scroll {
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
+}
+
+.legacy-scroll--free {
+  overscroll-behavior-y: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html,
+  .legacy-scroll {
+    scroll-behavior: auto;
+  }
+}
+
 body {
   padding: 0;
   margin: 0;

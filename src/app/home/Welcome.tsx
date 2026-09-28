@@ -1,22 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {sitePath} from "@/lib/site-path";
 
-function Welcome() {
-  const [isScrolled, setIsScrolled] = useState(false);
+type WelcomeProps = {
+  isScrolled: boolean;
+};
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const isPastWelcome = window.scrollY > window.innerHeight;
-      setIsScrolled(isPastWelcome);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
-
+function Welcome({ isScrolled }: WelcomeProps) {
   return (
     <div className="h-screen bg-cover bg-center relative welcome-section" style={{ backgroundImage: `url("${sitePath("/images/Section Top 1.jpg")}")` }}>
       <div className="cloud-banner-container">

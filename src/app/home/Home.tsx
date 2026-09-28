@@ -6,9 +6,16 @@ import Gallery from "./Gallery";
 import "@/styles/main.css";
 import {sitePath} from "@/lib/site-path";
 
+const SCROLL_DURATION = 850;
+const WHEEL_THRESHOLD = 12;
+
 function HomePage() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isProgrammaticScroll = useRef(false);
+  const currentSectionIndex = useRef(0);
   const [disableSnap, setDisableSnap] = useState(false);
+  const [welcomeScrolled, setWelcomeScrolled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -43,33 +50,69 @@ function HomePage() {
     const scrollContainer = containerRef.current;
     if (!scrollContainer) return;
 
+    const sectionTop = (index: number) => sectionHeight() * index;
+    const sectionHeight = () => scrollContainer.clientHeight;
+
+    const finishProgrammaticScroll = () => {
+      if (scrollEndTimer.current) clearTimeout(scrollEndTimer.current);
+      scrollEndTimer.current = setTimeout(() => {
+        isProgrammaticScroll.current = false;
+      }, SCROLL_DURATION);
+    };
+
+    const scrollToSection = (index: number) => {
+      const targetIndex = Math.max(0, Math.min(index, 2));
+      currentSectionIndex.current = targetIndex;
+      isProgrammaticScroll.current = true;
+      scrollContainer.scrollTo({
+        top: sectionTop(targetIndex),
+        behavior: "smooth",
+      });
+      finishProgrammaticScroll();
+    };
+
     const handleScroll = () => {
-      const sectionHeight = scrollContainer.clientHeight;
+      const height = sectionHeight();
       const scrollTop = scrollContainer.scrollTop;
-      const galleryStart = sectionHeight * 2;
+      const galleryStart = height * 2;
+      const nearestSection = Math.round(scrollTop / height);
 
       setDisableSnap(scrollTop >= galleryStart - 5);
+      setWelcomeScrolled(scrollTop > height * 0.35);
+      currentSectionIndex.current = Math.max(0, Math.min(nearestSection, 2));
     };
 
     const handleWheel = (e: WheelEvent) => {
-      const sectionHeight = scrollContainer.clientHeight;
+      const height = sectionHeight();
       const scrollTop = scrollContainer.scrollTop;
-      const galleryTop = sectionHeight * 2;
-      const nearTopOfGallery = scrollTop >= galleryTop - 5 && scrollTop <= galleryTop + 5;
+      const galleryTop = height * 2;
+      const inGallery = scrollTop >= galleryTop - 4;
+      const galleryAtTop = scrollTop <= galleryTop + 8;
 
-      if (nearTopOfGallery && e.deltaY < 0) {
+      if (Math.abs(e.deltaY) < WHEEL_THRESHOLD) return;
+      if (isProgrammaticScroll.current) {
         e.preventDefault();
-        scrollContainer.scrollTo({
-          top: sectionHeight,
-          behavior: "smooth",
-        });
+        return;
       }
+
+      if (inGallery) {
+        if (galleryAtTop && e.deltaY < 0) {
+          e.preventDefault();
+          scrollToSection(1);
+        }
+        return;
+      }
+
+      e.preventDefault();
+      scrollToSection(e.deltaY > 0 ? currentSectionIndex.current + 1 : currentSectionIndex.current - 1);
     };
 
     scrollContainer.addEventListener("scroll", handleScroll);
     scrollContainer.addEventListener("wheel", handleWheel, { passive: false });
+    handleScroll();
 
     return () => {
+      if (scrollEndTimer.current) clearTimeout(scrollEndTimer.current);
       scrollContainer.removeEventListener("scroll", handleScroll);
       scrollContainer.removeEventListener("wheel", handleWheel);
     };
@@ -80,7 +123,8 @@ function HomePage() {
     if (scrollContainer) {
       const sectionHeight = scrollContainer.clientHeight;
       const currentTop = scrollContainer.scrollTop;
-      const nextTop = currentTop >= sectionHeight * 2 ? 0 : currentTop + sectionHeight;
+      const currentIndex = Math.round(currentTop / sectionHeight);
+      const nextTop = currentIndex >= 2 ? 0 : (currentIndex + 1) * sectionHeight;
 
       scrollContainer.scrollTo({ top: nextTop, behavior: "smooth" });
     }
@@ -97,19 +141,19 @@ function HomePage() {
 
       <div
         ref={containerRef}
-        className={`h-screen overflow-y-scroll ${
-          disableSnap ? "" : "snap-y snap-mandatory"
+        className={`legacy-scroll h-screen overflow-y-scroll ${
+          disableSnap ? "legacy-scroll--free" : ""
         } ${isLoading ? "overflow-hidden" : ""}`}
       >
-        <section className="h-screen snap-start">
-          <Welcome />
+        <section className="h-screen">
+          <Welcome isScrolled={welcomeScrolled} />
         </section>
 
-        <section className="h-screen snap-start">
+        <section className="h-screen">
           <About />
         </section>
 
-        <section className="min-h-screen snap-start">
+        <section className="min-h-screen">
           <Gallery />
         </section>
 
